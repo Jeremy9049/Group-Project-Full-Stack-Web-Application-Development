@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Expense Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .positive {
+            color: blue;
+        }
+        .negative {
+            color: red;
+        }
+        .filter-container, .net-total, .budget-container, .add-transaction-container {
+            margin-top: 20px;
+        }
+        .search-bar, .filters, .budget-input, .transaction-input {
+            margin-right: 10px;
+        }
+        .budget-recommendations {
+            margin-top: 20px;
+            background-color: #f9f9f9;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+        #login-section, #main-content, #register-section {
+            margin-top: 20px;
+        }
+        .filter-container button {
+            margin-left: 10px;
+        }
+        #register-section {
+            display: none;
+        }
+        .add-transaction-container input, .add-transaction-container select {
+            margin-right: 5px;
+            margin-top: 5px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>Expense Tracker</h1>
+    </div>
+
+    <!-- Login Section -->
+    <div id="login-section">
+        <h2>Login</h2>
+        <label for="username">Username:</label>
+        <input type="text" id="username" required>
+        <label for="password">Password:</label>
+        <input type="password" id="password" required>
+        <button onclick="login()">Login</button>
+        <button onclick="showRegister()">Register</button>
+    </div>
+
+    <!-- Register Section -->
+    <div id="register-section">
+        <h2>Register</h2>
+        <label for="reg-username">Username:</label>
+        <input type="text" id="reg-username" required>
+        <label for="reg-password">Password:</label>
+        <input type="password" id="reg-password" required>
+        <button onclick="registerUser()">Submit</button>
+        <button onclick="showLogin()">Back to Login</button>
+    </div>
+
+    <!-- Main Content Section -->
+    <div id="main-content" style="display: none;">
+        <div class="filter-container">
+            <select class="filters" id="time-filter">
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="60">Last 60 days</option>
+                <option value="365">Last Year</option>
+            </select>
+
+            <select class="filters" id="sort-filter">
+                <option value="most-recent">Most Recent</option>
+                <option value="oldest">Oldest</option>
+                <option value="highest">Highest to Lowest</option>
+                <option value="lowest">Lowest to Highest</option>
+                <option value="alphabetical">Alphabetical</option>
+            </select>
+
+            <select class="filters" id="category-filter">
+                <option value="">All Categories</option>
+                <option value="Food">Food</option>
+                <option value="Transport">Transport</option>
+                <option value="Utilities">Utilities</option>
+                <option value="Income">Income</option>
+                <option value="Entertainment">Entertainment</option>
+            </select>
+
+            <input class="search-bar" id="search-bar" placeholder="Search by description">
+            <button onclick="applyFilters()">Get</button>
+        </div>
+
+        <table>
+            <thead>
+            <tr>
+                <th>Date</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Amount</th>
+                <th>Payment Method</th>
+                <th>Notes</th>
+            </tr>
+            </thead>
+            <tbody id="transaction-list">
+            <!-- Transactions will populate here dynamically -->
+            </tbody>
+        </table>
+
+        <div class="net-total">
+            <strong>Net Total:</strong> <span id="net-total">0</span>
+        </div>
+
+        <div class="budget-container">
+            <label for="monthly-budget">Monthly Budget:</label>
+            <input class="budget-input" id="monthly-budget" type="number" placeholder="Enter budget">
+            <button onclick="calculateRecommendations()">Get Recommendations</button>
+        </div>
+
+        <!-- New Transaction Form -->
+        <div class="add-transaction-container">
+            <h3>Add a New Transaction</h3>
+            <!-- For simplicity, we'll allow the user to pick a date. 
+                 Alternatively, you could automatically set it to today's date. -->
+            <input class="transaction-input" id="new-date" type="date" placeholder="Date">
+            <input class="transaction-input" id="new-category" type="text" placeholder="Category">
+            <input class="transaction-input" id="new-description" type="text" placeholder="Description">
+            <input class="transaction-input" id="new-amount" type="number" step="0.01" placeholder="Amount">
+            <input class="transaction-input" id="new-payment-method" type="text" placeholder="Payment Method">
+            <input class="transaction-input" id="new-notes" type="text" placeholder="Notes">
+            <button onclick="addTransaction()">Add Transaction</button>
+        </div>
+
+        <div class="budget-recommendations" id="budget-recommendations" style="display: none;">
+            <h3>Recommendations</h3>
+            <ul id="recommendation-list">
+                <!-- Recommendations will appear here -->
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    let userId = null;
+    let transactions = [];
+
+    function showRegister() {
+        document.getElementById('login-section').style.display = 'none';
+        document.getElementById('register-section').style.display = 'block';
+    }
+
+    function showLogin() {
+        document.getElementById('register-section').style.display = 'none';
+        document.getElementById('login-section').style.display = 'block';
+    }
+
+    async function registerUser() {
+        const username = document.getElementById('reg-username').value;
+        const password = document.getElementById('reg-password').value;
+
+        const res = await fetch('http://localhost:3000/register', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ username, password })
+        });
+
+        if (res.ok) {
+            alert('Registered successfully! You can now log in.');
+            showLogin();
+        } else {
+            const msg = await res.text();
+            alert('Registration failed: ' + msg);
+        }
+    }
+
+    async function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        const res = await fetch('http://localhost:3000/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ username, password })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            userId = data.userId;
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('register-section').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+            applyFilters();
+        } else {
+            alert('Invalid username or password');
+        }
+    }
+
+    async function applyFilters() {
+        if (!userId) return;
+
+        const timeRange = document.getElementById('time-filter').value;
+        const sortOrder = document.getElementById('sort-filter').value;
+        const category = document.getElementById('category-filter').value;
+        const searchTerm = document.getElementById('search-bar').value;
+
+        const res = await fetch('http://localhost:3000/transactions', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ userId, timeRange, sortOrder, category, searchTerm })
+        });
+
+        if (res.ok) {
+            transactions = await res.json();
+            loadTransactions();
+        } else {
+            alert('Failed to load transactions');
+        }
+    }
+
+    function loadTransactions() {
+        const transactionList = document.getElementById('transaction-list');
+        transactionList.innerHTML = '';
+
+        let netTotal = 0;
+        transactions.forEach(transaction => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${transaction.date}</td>
+                <td>${transaction.category}</td>
+                <td>${transaction.description}</td>
+                <td class="${parseFloat(transaction.amount) > 0 ? 'positive' : 'negative'}">${transaction.amount}</td>
+                <td>${transaction.payment_method}</td>
+                <td>${transaction.notes}</td>
+            `;
+            transactionList.appendChild(row);
+            netTotal += parseFloat(transaction.amount);
+        });
+
+        document.getElementById('net-total').innerText = netTotal.toFixed(2);
+    }
+
+    async function calculateRecommendations() {
+        const budget = parseFloat(document.getElementById('monthly-budget').value);
+        if (isNaN(budget)) {
+            alert('Please enter a valid budget');
+            return;
+        }
+
+        let totalExpenses = transactions.reduce((acc, t) => {
+            return (t.category.toLowerCase() !== 'income') ? acc + parseFloat(t.amount) : acc;
+        }, 0);
+
+        const recommendationList = document.getElementById('recommendation-list');
+        recommendationList.innerHTML = '';
+
+        if (totalExpenses <= budget) {
+            const item = document.createElement('li');
+            item.innerText = `You are within the budget. No changes needed.`;
+            recommendationList.appendChild(item);
+            document.getElementById('budget-recommendations').style.display = 'block';
+            return;
+        }
+
+        let negotiableExpenses = transactions.filter(t => {
+            let amt = parseFloat(t.amount);
+            return (t.category.toLowerCase() !== 'income' &&
+                t.category.toLowerCase() !== 'utilities' &&
+                amt > 20);
+        });
+
+        if (negotiableExpenses.length === 0) {
+            const item = document.createElement('li');
+            item.innerText = `All expenses are either fixed or below the threshold. Can't reduce further.`;
+            recommendationList.appendChild(item);
+            document.getElementById('budget-recommendations').style.display = 'block';
+            return;
+        }
+
+        for (let t of negotiableExpenses) {
+            if (totalExpenses <= budget) break;
+
+            let reduce = window.confirm(`You are over budget. Would you like to reduce the expense on "${t.description}" (currently $${t.amount})?`);
+            if (reduce) {
+                let newAmountStr = window.prompt(`Enter the new reduced amount for "${t.description}" (current $${t.amount}):`);
+                let newAmount = parseFloat(newAmountStr);
+                if (!isNaN(newAmount) && newAmount < parseFloat(t.amount)) {
+                    let success = await updateTransactionAmount(t.id, newAmount);
+                    if (success) {
+                        t.amount = newAmount;
+                        totalExpenses = transactions.reduce((acc, tr) => {
+                            return (tr.category.toLowerCase() !== 'income') ? acc + parseFloat(tr.amount) : acc;
+                        }, 0);
+                        const item = document.createElement('li');
+                        item.innerText = `Reduced "${t.description}" to $${newAmount}.`;
+                        recommendationList.appendChild(item);
+                    } else {
+                        const item = document.createElement('li');
+                        item.innerText = `Failed to update "${t.description}".`;
+                        recommendationList.appendChild(item);
+                    }
+                } else {
+                    const item = document.createElement('li');
+                    item.innerText = `No valid reduction made for "${t.description}".`;
+                    recommendationList.appendChild(item);
+                }
+            } else {
+                const item = document.createElement('li');
+                item.innerText = `No change made for "${t.description}".`;
+                recommendationList.appendChild(item);
+            }
+        }
+
+        if (totalExpenses <= budget) {
+            const item = document.createElement('li');
+            item.innerText = `Budget achieved! Total expenses now $${totalExpenses.toFixed(2)}.`;
+            recommendationList.appendChild(item);
+        } else {
+            const item = document.createElement('li');
+            item.innerText = `Still over budget after adjustments. Consider further changes.`;
+            recommendationList.appendChild(item);
+        }
+
+        loadTransactions();
+        document.getElementById('budget-recommendations').style.display = 'block';
+    }
+
+    async function updateTransactionAmount(transactionId, newAmount) {
+        const res = await fetch('http://localhost:3000/update-transaction', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ userId, transactionId, newAmount })
+        });
+        return res.ok;
+    }
+
+    async function addTransaction() {
+        if (!userId) {
+            alert('You must be logged in to add transactions.');
+            return;
+        }
+
+        const date = document.getElementById('new-date').value;
+        const category = document.getElementById('new-category').value;
+        const description = document.getElementById('new-description').value;
+        const amountStr = document.getElementById('new-amount').value;
+        const paymentMethod = document.getElementById('new-payment-method').value;
+        const notes = document.getElementById('new-notes').value;
+
+        const amount = parseFloat(amountStr);
+        if (!date || !category || !description || isNaN(amount)) {
+            alert('Please enter valid transaction details');
+            return;
+        }
+
+        const res = await fetch('http://localhost:3000/add-transaction', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ userId, date, category, description, amount, paymentMethod, notes })
+        });
+
+        if (res.ok) {
+            alert('Transaction added successfully!');
+            // Clear fields
+            document.getElementById('new-date').value = '';
+            document.getElementById('new-category').value = '';
+            document.getElementById('new-description').value = '';
+            document.getElementById('new-amount').value = '';
+            document.getElementById('new-payment-method').value = '';
+            document.getElementById('new-notes').value = '';
+            // Reload transactions
+            applyFilters();
+        } else {
+            alert('Failed to add transaction');
+        }
+    }
+
+</script>
+</body>
+</html>
