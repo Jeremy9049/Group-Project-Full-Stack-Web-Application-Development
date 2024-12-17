@@ -1,0 +1,12 @@
+{
+  "name": "group-project-full-stack-web-application-development",
+  "version": "1.0.0",
+  "description": "final web project",
+  "main": "app.js",
+  "scripts": {
+    "start": "FinalProject.html",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "jeremy",
+  "license": "ISC"
+}
