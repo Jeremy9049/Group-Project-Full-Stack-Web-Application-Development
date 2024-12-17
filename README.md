@@ -29,7 +29,7 @@ On your local computer in the Final Project directory:
 
 On MySQL:
     - We attached a sql query commands on the github (sqlStuff.md) where you can copy and paste the commands where we made our tables and entered some sample data. 
-    -Also, the mysql server connection needs to be on as well so it works
+    -Also, the mysql server connection needs to be on as well so it works.
 
 In the same Final Project Directory:
     -now that both the runtime environment and the database are set up and going, you can run the html file and the project will run as intended!
